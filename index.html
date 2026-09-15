@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Marageli · ማራጌሊ</title>
+<link rel="stylesheet" href="style.css" />
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="wordmark">
+    <span class="am">ማራጌሊ</span>
+    <span class="en">Marageli</span>
+  </div>
+  <p class="tagline">Buy, sell, save — campus to campus.</p>
+</header>
+
+<nav class="tabs">
+  <button class="tab active" data-tab="store">Marageli Store</button>
+  <button class="tab" data-tab="market">Student Market</button>
+</nav>
+
+<section id="categoryRow" class="categories"></section>
+
+<main id="grid" class="grid">
+  <p class="loading">Loading…</p>
+</main>
+
+<template id="cardTemplate">
+  <article class="card">
+    <div class="card-photo">
+      <img alt="" />
+    </div>
+    <div class="card-body">
+      <h3 class="card-title"></h3>
+      <p class="card-price"></p>
+      <p class="card-pickup"></p>
+    </div>
+  </article>
+</template>
+
+<script src="app.js"></script>
+</body>
+</html>
