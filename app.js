@@ -9,7 +9,7 @@ if (window.Telegram && window.Telegram.WebApp) {
 }
 
 // ---- Put your real deployed backend URL here once Render is live ----
-const API_BASE_URL = "YOUR_BACKEND_URL"; // e.g. "https://marageli-api.onrender.com"
+const API_BASE_URL = "https://backend-pro-4t3h.onrender.com"; // e.g. "https://marageli-api.onrender.com"
 
 let currentTab = "store";       // "store" or "market"
 let currentCategoryId = null;   // null = all categories
