@@ -26,8 +26,7 @@
 <nav class="tabs">
   <button class="tab active" data-tab="store">Marageli Store</button>
   <button class="tab" data-tab="market">Student Market</button>
-  <button class="tab" data-tab="favorites">♥ Favorites</button>
-  <button class="tab" data-tab="mine">My Listings</button>
+  <button class="tab" data-tab="game">🎲 Game</button>
 </nav>
 
 <div class="toolbar">
@@ -48,19 +47,23 @@
   <div class="skeleton"></div>
 </main>
 
+<section id="gameArea" class="game-area" style="display:none;"></section>
+
 <footer class="footer">Marageli — a student marketplace</footer>
 
 <template id="cardTemplate">
   <article class="card">
     <div class="card-photo">
       <img alt="" loading="lazy" />
-      <button class="fav-btn" type="button" aria-label="Save to favorites">♡</button>
       <span class="status-badge"></span>
     </div>
     <div class="card-body">
       <h3 class="card-title"></h3>
       <p class="card-price"></p>
       <p class="card-pickup"></p>
+      <p class="card-roll"></p>
+      <p class="market-status"></p>
+      <button class="admin-toggle-btn" type="button" style="display:none;"></button>
       <div class="card-actions">
         <button class="reaction-btn like-btn" type="button">👍 <span class="like-count">0</span></button>
         <button class="reaction-btn dislike-btn" type="button">👎 <span class="dislike-count">0</span></button>
