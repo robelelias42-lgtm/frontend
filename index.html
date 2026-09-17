@@ -3,16 +3,22 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="Marageli — buy and sell with fellow students on campus." />
 <title>Marageli · ማራጌሊ</title>
 <link rel="stylesheet" href="style.css" />
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
 
+<div class="brand-bar"></div>
+
 <header class="topbar">
-  <div class="wordmark">
-    <span class="am">ማራጌሊ</span>
-    <span class="en">Marageli</span>
+  <div class="brand">
+    <div class="mark">ማ</div>
+    <div class="wordmark">
+      <span class="en">Marageli</span>
+      <span class="am">ማራጌሊ</span>
+    </div>
   </div>
   <p class="tagline">Buy, sell, save — campus to campus.</p>
 </header>
@@ -20,23 +26,46 @@
 <nav class="tabs">
   <button class="tab active" data-tab="store">Marageli Store</button>
   <button class="tab" data-tab="market">Student Market</button>
+  <button class="tab" data-tab="favorites">♥ Favorites</button>
+  <button class="tab" data-tab="mine">My Listings</button>
 </nav>
+
+<div class="toolbar">
+  <input id="searchInput" class="search-input" type="search" placeholder="Search items…" />
+  <select id="sortSelect" class="sort-select">
+    <option value="">Newest</option>
+    <option value="price_asc">Price: Low to High</option>
+    <option value="price_desc">Price: High to Low</option>
+  </select>
+</div>
 
 <section id="categoryRow" class="categories"></section>
 
 <main id="grid" class="grid">
-  <p class="loading">Loading…</p>
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
 </main>
+
+<footer class="footer">Marageli — a student marketplace</footer>
 
 <template id="cardTemplate">
   <article class="card">
     <div class="card-photo">
-      <img alt="" />
+      <img alt="" loading="lazy" />
+      <button class="fav-btn" type="button" aria-label="Save to favorites">♡</button>
+      <span class="status-badge"></span>
     </div>
     <div class="card-body">
       <h3 class="card-title"></h3>
       <p class="card-price"></p>
       <p class="card-pickup"></p>
+      <div class="card-actions">
+        <button class="reaction-btn like-btn" type="button">👍 <span class="like-count">0</span></button>
+        <button class="reaction-btn dislike-btn" type="button">👎 <span class="dislike-count">0</span></button>
+        <button class="reaction-btn share-btn" type="button">↗ Share</button>
+      </div>
     </div>
   </article>
 </template>
