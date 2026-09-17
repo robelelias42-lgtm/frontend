@@ -11,7 +11,7 @@ if (tg) {
 // ---- Put your real deployed backend URL here once Render is live ----
 const API_BASE_URL = "https://backend-pro-4t3h.onrender.com";
 
-let currentTab = "store";       // "store" | "market" | "favorites" | "mine"
+let currentTab = "store";       // "store" | "market" | "game"
 let currentCategoryId = null;   // null = all categories
 let currentSearch = "";
 let currentSort = "";
@@ -19,14 +19,13 @@ let categories = [];
 let searchDebounceTimer = null;
 
 const grid = document.getElementById("grid");
+const gameArea = document.getElementById("gameArea");
 const categoryRow = document.getElementById("categoryRow");
+const toolbar = document.querySelector(".toolbar");
 const tabButtons = document.querySelectorAll(".tab");
 const cardTemplate = document.getElementById("cardTemplate");
 const searchInput = document.getElementById("searchInput");
 const sortSelect = document.getElementById("sortSelect");
-
-// Tabs that need to know "who is this student" (require Telegram login)
-const AUTH_REQUIRED_TABS = new Set(["favorites", "mine"]);
 
 async function fetchJSON(path, options = {}) {
   const headers = { ...(options.headers || {}) };
@@ -63,36 +62,22 @@ function makeChip(label, categoryId, isActive) {
   return chip;
 }
 
-function buildQuery(extra = {}) {
+function buildQuery() {
   const params = new URLSearchParams();
   if (currentCategoryId) params.set("category_id", currentCategoryId);
   if (currentSearch) params.set("search", currentSearch);
   if (currentSort) params.set("sort", currentSort);
-  Object.entries(extra).forEach(([k, v]) => { if (v) params.set(k, v); });
   const qs = params.toString();
   return qs ? `?${qs}` : "";
 }
 
 async function loadListings() {
-  // "Not logged in yet" guard for tabs that need Telegram auth
-  if (AUTH_REQUIRED_TABS.has(currentTab) && !(tg && tg.initData)) {
-    grid.innerHTML = `<p class="empty">Open this from the Marageli bot in Telegram to see this page.</p>`;
-    return;
-  }
-
   grid.innerHTML = `<div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div>`;
 
   try {
-    let items;
-    if (currentTab === "store") {
-      items = await fetchJSON(`/api/store${buildQuery()}`);
-    } else if (currentTab === "market") {
-      items = await fetchJSON(`/api/listings${buildQuery()}`);
-    } else if (currentTab === "favorites") {
-      items = await fetchJSON("/api/favorites");
-    } else {
-      items = await fetchJSON("/api/my-listings");
-    }
+    const items = currentTab === "store"
+      ? await fetchJSON(`/api/store${buildQuery()}`)
+      : await fetchJSON(`/api/listings${buildQuery()}`);
     renderItems(items);
   } catch (err) {
     grid.innerHTML = `<p class="empty">Couldn't load items. Pull down to try again.</p>`;
@@ -115,31 +100,32 @@ function renderItems(items) {
     node.querySelector(".card-title").textContent = item.title;
     node.querySelector(".card-price").textContent = `${item.price_etb} ${item.currency}`;
     node.querySelector(".card-pickup").textContent = item.pickup_location || "";
+    node.querySelector(".card-roll").textContent = `No. ${item.id}`;
 
-    // Status badge (only meaningful on "My Listings", where items aren't all approved)
-    if (currentTab === "mine" && item.status !== "approved") {
-      const badge = node.querySelector(".status-badge");
-      badge.textContent = item.status.replace("_", " ");
-      badge.classList.add("show", item.status);
+    // On market / sold status
+    const marketStatus = node.querySelector(".market-status");
+    if (item.status === "sold") {
+      marketStatus.textContent = "🔴 Sold";
+      marketStatus.classList.add("sold");
+    } else {
+      marketStatus.textContent = "🟢 On Market";
+      marketStatus.classList.add("on-market");
     }
 
-    // Favorite heart
-    const favBtn = node.querySelector(".fav-btn");
-    setFavButtonState(favBtn, item.is_favorite);
-    favBtn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      if (!(tg && tg.initData)) return;
-      try {
-        if (favBtn.classList.contains("active")) {
-          await fetchJSON(`/api/favorites/${item.id}`, { method: "DELETE" });
-          setFavButtonState(favBtn, false);
-          if (currentTab === "favorites") card.remove();
-        } else {
-          await fetchJSON(`/api/favorites/${item.id}`, { method: "POST" });
-          setFavButtonState(favBtn, true);
-        }
-      } catch (err) { /* ignore — keep UI unchanged on failure */ }
-    });
+    // Admin-only: toggle between On Market and Sold
+    if (item.can_manage) {
+      const toggleBtn = node.querySelector(".admin-toggle-btn");
+      toggleBtn.style.display = "block";
+      toggleBtn.textContent = item.status === "sold" ? "Mark as On Market" : "Mark as Sold";
+      toggleBtn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const endpoint = item.status === "sold" ? "mark-on-market" : "mark-sold";
+        try {
+          await fetchJSON(`/api/listings/${item.id}/${endpoint}`, { method: "POST" });
+          loadListings(); // refresh to reflect the new status everywhere
+        } catch (err) { /* ignore */ }
+      });
+    }
 
     // Like / dislike
     const likeBtn = node.querySelector(".like-btn");
@@ -162,11 +148,6 @@ function renderItems(items) {
 
     grid.appendChild(node);
   });
-}
-
-function setFavButtonState(btn, isFavorite) {
-  btn.textContent = isFavorite ? "♥" : "♡";
-  btn.classList.toggle("active", !!isFavorite);
 }
 
 async function react(listingId, reaction, likeBtn, dislikeBtn, likeCount, dislikeCount) {
@@ -195,6 +176,50 @@ function shareListing(item) {
   }
 }
 
+// ---- Game tab (Tepi / Aman / Mizan) — read-only board view.
+// Picking a number and paying for it happens in the bot chat, not here.
+async function loadGames() {
+  gameArea.innerHTML = `<p class="empty">Loading boards…</p>`;
+  try {
+    const boards = await fetchJSON("/api/games");
+    renderGames(boards);
+  } catch (err) {
+    gameArea.innerHTML = `<p class="empty">Couldn't load the game boards.</p>`;
+  }
+}
+
+function renderGames(boards) {
+  gameArea.innerHTML = "";
+  boards.forEach((board) => {
+    const section = document.createElement("section");
+    section.className = "game-board";
+
+    const statusText = board.status === "open"
+      ? "🟢 Game is opened — pick your lucky number!"
+      : "⏳ Waiting for winners";
+
+    section.innerHTML = `
+      <div class="game-board-header">
+        <span class="game-board-name">${board.name}</span>
+        <span class="game-board-price">${board.price_etb} ${board.currency} / number</span>
+      </div>
+      <p class="game-board-status ${board.status}">${statusText}</p>
+      <div class="number-grid"></div>
+      <p class="game-note">Open the bot and tap 🎲 Games to pick a number.</p>
+    `;
+
+    const numberGrid = section.querySelector(".number-grid");
+    board.numbers.forEach((n) => {
+      const cell = document.createElement("div");
+      cell.className = "number-cell" + (n.status === "taken" ? " taken" : "");
+      cell.textContent = n.number;
+      numberGrid.appendChild(cell);
+    });
+
+    gameArea.appendChild(section);
+  });
+}
+
 // ---- Tabs ----
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -205,11 +230,19 @@ tabButtons.forEach((button) => {
     document.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
     if (categoryRow.firstChild) categoryRow.firstChild.classList.add("active");
 
-    const showCategoriesAndToolbar = currentTab === "store" || currentTab === "market";
-    categoryRow.style.display = currentTab === "market" ? "flex" : "none";
-    document.querySelector(".toolbar").style.display = showCategoriesAndToolbar ? "flex" : "none";
-
-    loadListings();
+    if (currentTab === "game") {
+      grid.style.display = "none";
+      categoryRow.style.display = "none";
+      toolbar.style.display = "none";
+      gameArea.style.display = "block";
+      loadGames();
+    } else {
+      gameArea.style.display = "none";
+      grid.style.display = "grid";
+      categoryRow.style.display = currentTab === "market" ? "flex" : "none";
+      toolbar.style.display = "flex";
+      loadListings();
+    }
   });
 });
 
