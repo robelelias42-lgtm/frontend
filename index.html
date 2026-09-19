@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<meta name="description" content="Marageli — buy and sell with fellow students on campus." />
+<meta name="description" content="Marageli — buy and sell across Ethiopia, right in Telegram." />
 <title>Marageli · ማራጌሊ</title>
 <link rel="stylesheet" href="style.css" />
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -20,14 +20,20 @@
       <span class="am">ማራጌሊ</span>
     </div>
   </div>
-  <p class="tagline">Buy, sell, save — campus to campus.</p>
+  <p class="tagline">Buy, sell, save — anywhere in Ethiopia.</p>
 </header>
 
 <nav class="tabs">
   <button class="tab active" data-tab="store">Marageli Store</button>
-  <button class="tab" data-tab="market">Student Market</button>
-  <button class="tab" data-tab="game">🎲 Game</button>
+  <button class="tab" data-tab="market">Community Market</button>
+  <button class="tab" data-tab="rules">ℹ️ How It Works</button>
 </nav>
+
+<div id="storeNotice" class="notice" style="display:none;">
+  Products listed under this page are usually purchased in bulk, with a set minimum
+  order quantity shown under each product. If the product is expensive, you're
+  welcome to order just a single one.
+</div>
 
 <div class="toolbar">
   <input id="searchInput" class="search-input" type="search" placeholder="Search items…" />
@@ -47,9 +53,20 @@
   <div class="skeleton"></div>
 </main>
 
-<section id="gameArea" class="game-area" style="display:none;"></section>
+<section id="rulesArea" class="rules-area" style="display:none;">
+  <h2 class="rules-heading">How Marageli Works</h2>
+  <ol class="rules-list">
+    <li><strong>Browse.</strong> Look through Marageli Store (our own bulk products) or the Community Market (items posted by people around Ethiopia).</li>
+    <li><strong>Check the details.</strong> Every product shows its price in ETB, location, minimum order quantity, whether delivery is available, and a contact phone number.</li>
+    <li><strong>Contact the seller.</strong> To buy, call or message the phone number listed on the product — payment and handover happen directly between you and the seller (or with Marageli, for Store items).</li>
+    <li><strong>Delivery or pickup.</strong> Each item is marked as delivery-available or pickup-only — check before you order.</li>
+    <li><strong>Posting an item.</strong> Anyone can post to the Community Market via the bot's "Sell an item" option. A small listing fee applies, and every listing is reviewed by an admin before it goes live.</li>
+    <li><strong>Status labels.</strong> "On Market" / "Available" means it's still up for grabs. "Sold" / "Not Available" means it's gone — the listing stays visible for reference but can't be ordered.</li>
+    <li><strong>Be respectful.</strong> Accurate photos, fair prices, and honest descriptions keep Marageli useful for everyone.</li>
+  </ol>
+</section>
 
-<footer class="footer">Marageli — a student marketplace</footer>
+<footer class="footer">Marageli — a marketplace for everyone in Ethiopia</footer>
 
 <template id="cardTemplate">
   <article class="card">
@@ -60,14 +77,20 @@
     <div class="card-body">
       <h3 class="card-title"></h3>
       <p class="card-price"></p>
-      <p class="card-pickup"></p>
-      <p class="card-roll"></p>
       <p class="market-status"></p>
       <button class="admin-toggle-btn" type="button" style="display:none;"></button>
+
+      <dl class="spec-grid">
+        <div class="spec-row"><dt>📍 Location</dt><dd class="spec-location"></dd></div>
+        <div class="spec-row"><dt>📦 Min. order</dt><dd class="spec-min-qty"></dd></div>
+        <div class="spec-row"><dt>🚚 Delivery</dt><dd class="spec-delivery"></dd></div>
+        <div class="spec-row"><dt>📞 Contact</dt><dd class="spec-phone"></dd></div>
+      </dl>
+      <p class="card-roll"></p>
+
       <div class="card-actions">
         <button class="reaction-btn like-btn" type="button">👍 <span class="like-count">0</span></button>
         <button class="reaction-btn dislike-btn" type="button">👎 <span class="dislike-count">0</span></button>
-        <button class="reaction-btn share-btn" type="button">↗ Share</button>
       </div>
     </div>
   </article>
