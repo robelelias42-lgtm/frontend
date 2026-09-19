@@ -11,7 +11,7 @@ if (tg) {
 // ---- Put your real deployed backend URL here once Render is live ----
 const API_BASE_URL = "https://backend-pro-4t3h.onrender.com";
 
-let currentTab = "store";       // "store" | "market" | "game"
+let currentTab = "store";       // "store" | "market" | "rules"
 let currentCategoryId = null;   // null = all categories
 let currentSearch = "";
 let currentSort = "";
@@ -19,7 +19,8 @@ let categories = [];
 let searchDebounceTimer = null;
 
 const grid = document.getElementById("grid");
-const gameArea = document.getElementById("gameArea");
+const rulesArea = document.getElementById("rulesArea");
+const storeNotice = document.getElementById("storeNotice");
 const categoryRow = document.getElementById("categoryRow");
 const toolbar = document.querySelector(".toolbar");
 const tabButtons = document.querySelectorAll(".tab");
@@ -94,32 +95,48 @@ function renderItems(items) {
 
   items.forEach((item) => {
     const node = cardTemplate.content.cloneNode(true);
-    const card = node.querySelector(".card");
 
     node.querySelector("img").src = `${API_BASE_URL}${item.photo_url}`;
     node.querySelector(".card-title").textContent = item.title;
     node.querySelector(".card-price").textContent = `${item.price_etb} ${item.currency}`;
-    node.querySelector(".card-pickup").textContent = item.pickup_location || "";
     node.querySelector(".card-roll").textContent = `No. ${item.id}`;
 
-    // On market / sold status
-    const marketStatus = node.querySelector(".market-status");
-    if (item.status === "sold") {
-      marketStatus.textContent = "🔴 Sold";
-      marketStatus.classList.add("sold");
+    // Spec grid: location, min order qty, delivery, phone
+    node.querySelector(".spec-location").textContent = item.pickup_location || "—";
+    node.querySelector(".spec-min-qty").textContent = item.min_order_qty || 1;
+    node.querySelector(".spec-delivery").textContent = item.is_delivery ? "Yes" : "No";
+    const phoneEl = node.querySelector(".spec-phone");
+    if (item.phone_number) {
+      const link = document.createElement("a");
+      link.href = `tel:${item.phone_number}`;
+      link.textContent = item.phone_number;
+      phoneEl.appendChild(link);
     } else {
-      marketStatus.textContent = "🟢 On Market";
-      marketStatus.classList.add("on-market");
+      phoneEl.textContent = "—";
     }
 
-    // Admin-only: toggle between On Market and Sold
+    // Availability / Sold status — wording depends on Store vs Market
+    const marketStatus = node.querySelector(".market-status");
+    const isSold = item.status === "sold";
+    if (item.is_store_item) {
+      marketStatus.textContent = isSold ? "🚫 Not Available" : "✅ Available";
+    } else {
+      marketStatus.textContent = isSold ? "🔴 Sold" : "🟢 On Market";
+    }
+    marketStatus.classList.add(isSold ? "sold" : "on-market");
+
+    // Admin-only: toggle availability/sold status
     if (item.can_manage) {
       const toggleBtn = node.querySelector(".admin-toggle-btn");
       toggleBtn.style.display = "block";
-      toggleBtn.textContent = item.status === "sold" ? "Mark as On Market" : "Mark as Sold";
+      if (item.is_store_item) {
+        toggleBtn.textContent = isSold ? "Mark Available" : "Mark Not Available";
+      } else {
+        toggleBtn.textContent = isSold ? "Mark as On Market" : "Mark as Sold";
+      }
       toggleBtn.addEventListener("click", async (e) => {
         e.stopPropagation();
-        const endpoint = item.status === "sold" ? "mark-on-market" : "mark-sold";
+        const endpoint = isSold ? "mark-on-market" : "mark-sold";
         try {
           await fetchJSON(`/api/listings/${item.id}/${endpoint}`, { method: "POST" });
           loadListings(); // refresh to reflect the new status everywhere
@@ -140,12 +157,6 @@ function renderItems(items) {
     likeBtn.addEventListener("click", (e) => { e.stopPropagation(); react(item.id, "like", likeBtn, dislikeBtn, likeCount, dislikeCount); });
     dislikeBtn.addEventListener("click", (e) => { e.stopPropagation(); react(item.id, "dislike", likeBtn, dislikeBtn, likeCount, dislikeCount); });
 
-    // Share
-    node.querySelector(".share-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      shareListing(item);
-    });
-
     grid.appendChild(node);
   });
 }
@@ -165,61 +176,6 @@ async function react(listingId, reaction, likeBtn, dislikeBtn, likeCount, dislik
   } catch (err) { /* ignore */ }
 }
 
-function shareListing(item) {
-  const text = `${item.title} — ${item.price_etb} ${item.currency} on Marageli`;
-  const url = API_BASE_URL; // Mini App entry point; swap for a deep link if you add one later
-  const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
-  if (tg) {
-    tg.openTelegramLink(shareUrl);
-  } else {
-    window.open(shareUrl, "_blank");
-  }
-}
-
-// ---- Game tab (Tepi / Aman / Mizan) — read-only board view.
-// Picking a number and paying for it happens in the bot chat, not here.
-async function loadGames() {
-  gameArea.innerHTML = `<p class="empty">Loading boards…</p>`;
-  try {
-    const boards = await fetchJSON("/api/games");
-    renderGames(boards);
-  } catch (err) {
-    gameArea.innerHTML = `<p class="empty">Couldn't load the game boards.</p>`;
-  }
-}
-
-function renderGames(boards) {
-  gameArea.innerHTML = "";
-  boards.forEach((board) => {
-    const section = document.createElement("section");
-    section.className = "game-board";
-
-    const statusText = board.status === "open"
-      ? "🟢 Game is opened — pick your lucky number!"
-      : "⏳ Waiting for winners";
-
-    section.innerHTML = `
-      <div class="game-board-header">
-        <span class="game-board-name">${board.name}</span>
-        <span class="game-board-price">${board.price_etb} ${board.currency} / number</span>
-      </div>
-      <p class="game-board-status ${board.status}">${statusText}</p>
-      <div class="number-grid"></div>
-      <p class="game-note">Open the bot and tap 🎲 Games to pick a number.</p>
-    `;
-
-    const numberGrid = section.querySelector(".number-grid");
-    board.numbers.forEach((n) => {
-      const cell = document.createElement("div");
-      cell.className = "number-cell" + (n.status === "taken" ? " taken" : "");
-      cell.textContent = n.number;
-      numberGrid.appendChild(cell);
-    });
-
-    gameArea.appendChild(section);
-  });
-}
-
 // ---- Tabs ----
 tabButtons.forEach((button) => {
   button.addEventListener("click", () => {
@@ -230,17 +186,18 @@ tabButtons.forEach((button) => {
     document.querySelectorAll(".chip").forEach((c) => c.classList.remove("active"));
     if (categoryRow.firstChild) categoryRow.firstChild.classList.add("active");
 
-    if (currentTab === "game") {
+    if (currentTab === "rules") {
       grid.style.display = "none";
       categoryRow.style.display = "none";
       toolbar.style.display = "none";
-      gameArea.style.display = "block";
-      loadGames();
+      storeNotice.style.display = "none";
+      rulesArea.style.display = "block";
     } else {
-      gameArea.style.display = "none";
+      rulesArea.style.display = "none";
       grid.style.display = "grid";
       categoryRow.style.display = currentTab === "market" ? "flex" : "none";
       toolbar.style.display = "flex";
+      storeNotice.style.display = currentTab === "store" ? "block" : "none";
       loadListings();
     }
   });
@@ -261,7 +218,8 @@ sortSelect.addEventListener("change", () => {
   loadListings();
 });
 
-// First load
-categoryRow.style.display = "none"; // hidden on Store tab by default
+// First load — Store tab is active by default
+categoryRow.style.display = "none";
+storeNotice.style.display = "block";
 loadCategories();
 loadListings();
